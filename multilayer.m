@@ -11,7 +11,16 @@ function test()
     end
 end
 
-function [weights, output, fields] = forward(input, weights, neurons, activation_func)
+function output = evalNeuron(input, weights, g=@tangenth)
+    layers = size(weights, 3);
+    new_input = [-1, input];
+    for layer = 1:layers
+        output = g(weights(:, :, layer) * new_input);
+        new_input = [-1, output];
+    end
+end
+
+function [output, fields] = forward(input, weights, neurons, activation_func)
     layers = size(weights, 3);
     input = [-1; input];
     for layer = 1:layers
@@ -50,4 +59,8 @@ end
 
 function tangenth(a, beta=1)
     return tanh(beta * a);
+end
+
+function deriv_tan(a, beta=1)
+    return beta * (1 - tanh(beta * a)^2);
 end
