@@ -6,7 +6,7 @@ function xorProblem()
     neurons = [2 1];
     weights = trainNeuronForXorProblem(input_vec, neurons, expected);
     for j = 1:length(input_vec)
-        evalNeuron(input_vec(j, 1), weights, neurons)
+        evalNeuron(input_vec(j, :), weights, neurons)
     end
 end
 
@@ -14,7 +14,12 @@ function weights = trainNeuronForXorProblem(input_vec, neurons, expected)
     % Each row represents a neuron
     % each column represents the weights spawning from 
     % a neuron or input.
-    weights = rand(2, 3, 2);
-    epochs = 1;
+    weights = {};
+    input_size = size(input_vec, 2) + 1;
+    for j = 1:length(neurons)
+        weights{j} = rand(neurons(j), input_size);
+        input_size = neurons(j) + 1;
+    end
+    epochs = 10000;
     trainNeuron(input_vec, expected, neurons, weights);
 end
