@@ -18,27 +18,23 @@ function output = evalNeuron(input, weights, neurons, g=@exponential)
     end
 end
 
-function weights = trainNeuron(params)
-    input_vec = params{INPUT};
-    expected = params{EXPECTED_OUTPUT};
+function weights = trainNeuron(input_vec, expected, neurons,
+        weights, epochs, act_func, deriv_func, lrate)
     epoch_size = size(input_vec, 1);
-    for epoch = 1:params{EPOCHS}
+    for epoch = 1:epochs
         for j = 1:epoch_size
             % input matrixes have the input vector as a row, it must be transformed
             % to a column vector first.
             input = input_vec(j, :)';
-            [output, fields] = forward(input, params);
+            [output, fields] = forward(input, neurons, weights, act_func);
             err = expected(j, :) - output;
-            weights = backward(err, fields, input, params);
+            weights = backward(err, fields, input, neurons, weights, act_func, deriv_func, lrate);
         end
     end
 end
 
-function [output, fields] = forward(input, params)
-    layers = length(params{NEURONS});
-    weights = params{WEIGHTS};
-    g = params{ACT_FUNC};
-
+function [output, fields] = forward(input, neurons, weights, g)
+    layers = length(neurons);
     input = [-1; input];
     for layer = 1:layers
         v = weights{1, layer} * input;
@@ -48,12 +44,10 @@ function [output, fields] = forward(input, params)
     end
 end
 
-function weights = backward(err, fields, input, params)
-    layers = length(params{NEURONS});
-    g = params{ACT_FUNC};
-    gderiv = params{DERIV_FUNC};
+function weights = backward(err, fields, input, neurons, weights, g, gderiv, lrate)
+    layers = length(neurons);
 
-    out_gradient = err * deriv_func(fields{layers})';
+    out_gradient = err * gderiv(fields{layers})';
     y = [-1; g(fields{layers - 1})]'; % row vector
     delta{1, layers} = lrate * out_gradient * y;
 
@@ -67,11 +61,11 @@ function weights = backward(err, fields, input, params)
         else
             y = [-1; input];
         end
-        deltas = params{LRATE} * y * gradients;
+        deltas = lrate * y * gradients;
         delta{1, layer} = deltas';
     end
 
-    for j = 1:length(params{NEURONS})
+    for j = 1:length(neurons)
         weights{1, j} += delta{1, j};
     end
 end
@@ -91,26 +85,4 @@ end
 
 function output = deriv_tan(a, beta=1)
     output = beta * (1 - tanh(beta * a) .^ 2);
-end
-
-function params = buildParamsCell(input_vec, expected, neurons, weights, epochs,
-        g, gderiv, lrate)
-    global INPUT
-    global EXPECTED_OUTPUT
-    global NEURONS
-    global WEIGHTS
-    global EPOCHS
-    global ACT_FUNC
-    global DERIV_FUNC
-    global DERIV_FUNC
-    global LRATE
-
-    params{INPUT} = input_vec;
-    params{EXPECTED_OUTPUT} = expected;
-    params{NEURONS} = neurons;
-    params{WEIGHTS} = weights;
-    params{EPOCHS} = epochs;
-    params{ACT_FUNC} = g;
-    params{DERIV_FUNC} = gderiv;
-    params{LRATE} = lrate;
 end

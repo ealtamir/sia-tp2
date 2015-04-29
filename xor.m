@@ -25,7 +25,5 @@ function weights = trainNeuronForXorProblem(input_vec, neurons, expected,
         input_size = neurons(j) + 1;
     end
     epochs = 2000;
-    params = buildParamsCell(input_vec, expected, neurons,
-        weights, epochs, act_func, deriv_func, lrate);
-    weights = trainNeuron(params);
+    weights = trainNeuron(input_vec, expected, neurons, weights, epochs, act_func, deriv_func, lrate);
 end
