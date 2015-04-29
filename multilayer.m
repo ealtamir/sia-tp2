@@ -1,3 +1,14 @@
+global INPUT = 1
+global EXPECTED_OUTPUT = 2
+global NEURONS = 3
+global WEIGHTS = 4
+global EPOCHS = 5
+global ACT_FUNC = 6
+global DERIV_FUNC = 7
+global DERIV_FUNC = 8
+global LRATE = 8
+
+
 function output = evalNeuron(input, weights, neurons, g=@exponential)
     layers = length(neurons);
     new_input = [-1, input]';
@@ -7,66 +18,61 @@ function output = evalNeuron(input, weights, neurons, g=@exponential)
     end
 end
 
-function weights = trainNeuron(input_vec, expected, neurons, weights, epochs=1)
+function weights = trainNeuron(params)
+    input_vec = params{INPUT};
+    expected = params{EXPECTED_OUTPUT};
     epoch_size = size(input_vec, 1);
-    for epoch = 1:epochs
+    for epoch = 1:params{EPOCHS}
         for j = 1:epoch_size
             % input matrixes have the input vector as a row, it must be transformed
             % to a column vector first.
             input = input_vec(j, :)';
-            [output, fields] = forward(input, weights, neurons, @exponential);
+            [output, fields] = forward(input, params);
             err = expected(j, :) - output;
-            weights = backward(input, err, weights, fields, neurons, @deriv_exp, @exponential);
+            weights = backward(err, fields, input, params);
         end
     end
 end
 
-function [output, fields] = forward(input, weights, neurons, activation_func)
-    layers = length(neurons);
+function [output, fields] = forward(input, params)
+    layers = length(params{NEURONS});
+    weights = params{WEIGHTS};
+    g = params{ACT_FUNC};
+
     input = [-1; input];
     for layer = 1:layers
-        v = weights{layer} * input;
-
-        % has the induced local fields of each layer.
-        % v is column vector
-        fields{layer} = v;
-        output = activation_func(v);
+        v = weights{1, layer} * input;
+        fields{1, layer} = v;
+        output = g(v);
         input = [-1; output];
     end
 end
 
-function weights = backward(input, err, weights, fields, neurons, deriv_func, act_func, lrate=0.6)
-    layers = length(neurons);
+function weights = backward(err, fields, input, params)
+    layers = length(params{NEURONS});
+    g = params{ACT_FUNC};
+    gderiv = params{DERIV_FUNC};
 
-    % delta = e_j * g'(v_j(n)), where v_j represents the sums at the output
-    % gradients is a row vector
-    gradients = err * deriv_func(fields{layers})';
+    out_gradient = err * deriv_func(fields{layers})';
+    y = [-1; g(fields{layers - 1})]'; % row vector
+    delta{1, layers} = lrate * out_gradient * y;
 
-    % outputs from previous layer of neurons
-    % y is a column vector
-    y = [-1; act_func(fields{layers - 1})]';
-
-    d{1, layers} = w1 = lrate * gradients * y;
-
-    % hasta acá da todo lo mismo
+    gradients = out_gradient;
     for layer = (layers - 1) : -1 : 1
-        pesos = weights{layer + 1}(:, 2:end);
-        suma = (gradients * pesos);
-        deriv = deriv_func(fields{layer})';
+        suma = gradients * weights{layer + 1}(:, 2:end); % esto puede dar problemas si hay varias capas ocultas.
+        deriv = gderiv(fields{layer})';
         gradients =  suma .* deriv;
-        if layer - 1 > 0 % still not in first layer
-            y = [-1; act_func(fields{layer - 1})]';
+        if layer - 1 > 0 % if not in input layer yet
+            y = [-1; g(fields{layer - 1})]';
         else
-            % use input because we're in the first layer
             y = [-1; input];
         end
-        deltas = lrate * y * gradients;
-        d{1, layer} = deltas';
+        deltas = params{LRATE} * y * gradients;
+        delta{1, layer} = deltas';
     end
-    % hasta acá todo lo mismo
 
-    for j = 1:length(neurons)
-        weights{1, j} += d{1, j};
+    for j = 1:length(params{NEURONS})
+        weights{1, j} += delta{1, j};
     end
 end
 
@@ -85,4 +91,26 @@ end
 
 function output = deriv_tan(a, beta=1)
     output = beta * (1 - tanh(beta * a) .^ 2);
+end
+
+function params = buildParamsCell(input_vec, expected, neurons, weights, epochs,
+        g, gderiv, lrate)
+    global INPUT
+    global EXPECTED_OUTPUT
+    global NEURONS
+    global WEIGHTS
+    global EPOCHS
+    global ACT_FUNC
+    global DERIV_FUNC
+    global DERIV_FUNC
+    global LRATE
+
+    params{INPUT} = input_vec;
+    params{EXPECTED_OUTPUT} = expected;
+    params{NEURONS} = neurons;
+    params{WEIGHTS} = weights;
+    params{EPOCHS} = epochs;
+    params{ACT_FUNC} = g;
+    params{DERIV_FUNC} = gderiv;
+    params{LRATE} = lrate;
 end
