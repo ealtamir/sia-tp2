@@ -1,4 +1,4 @@
-function output = evalNeuron(input, weights, neurons, g=@tangenth)
+function output = evalNeuron(input, weights, neurons, g=@exponential)
     layers = length(neurons);
     new_input = [-1, input]';
     for layer = 1:layers
@@ -7,16 +7,16 @@ function output = evalNeuron(input, weights, neurons, g=@tangenth)
     end
 end
 
-function trainNeuron(input_vec, expected, neurons, weights, epochs=100)
+function trainNeuron(input_vec, expected, neurons, weights, epochs=1)
     epoch_size = size(input_vec, 1);
     for epoch = 1:epochs
         for j = 1:epoch_size
             % input matrixes have the input vector as a row, it must be transformed
             % to a column vector first.
             input = input_vec(j, :)';
-            [output, fields] = forward(input, weights, neurons, @tangenth);
+            [output, fields] = forward(input, weights, neurons, @exponential);
             err = expected(j, :) - output;
-            weights = backward(input, err, weights, fields, neurons, @deriv_tan, @tangenth);
+            weights = backward(input, err, weights, fields, neurons, @deriv_exp, @exponential);
         end
     end
 end
@@ -35,7 +35,7 @@ function [output, fields] = forward(input, weights, neurons, activation_func)
     end
 end
 
-function weights = backward(input, err, weights, fields, neurons, deriv_func, act_func, lrate=0.1)
+function weights = backward(input, err, weights, fields, neurons, deriv_func, act_func, lrate=0.6)
     layers = length(neurons);
 
     % delta = e_j * g'(v_j(n)), where v_j represents the sums at the output
@@ -44,37 +44,37 @@ function weights = backward(input, err, weights, fields, neurons, deriv_func, ac
 
     % outputs from previous layer of neurons
     % y is a column vector
-    y = [-1; act_func(fields{layers - 1})];
+    y = [-1; act_func(fields{layers - 1})]';
 
-    if length(gradients) == 1
-        deltas = lrate * gradients * y';
-    else
-        deltas = lrate * gradients * y;
-    end
-    weights{layers} = weights{layers} + deltas;
+    d{layers} = w1 = lrate * gradients * y;
 
+    % hasta acá da todo lo mismo
     for layer = (layers - 1) : -1 : 1
         suma = (gradients * weights{layer + 1}(:, 2:end));
         deriv = deriv_func(fields{layer})';
         gradients =  suma .* deriv;
         if layer - 1 > 0 % still not in first layer
             y = [-1; act_func(fields{layer - 1})]';
-            deltas = (lrate * y * gradients);
         else
             % use input because we're in the first layer
             y = [-1; input];
-            deltas = lrate * y * gradients;
         end
-        weights{layer} = weights{layer} + deltas';
+        deltas = lrate * y * gradients;
+        d{layer} = deltas';
+    end
+
+    for j = 1:length(neurons)
+        weights{j} = weights{j} + d{j};
     end
 end
 
-function ouput = exponential(a, beta=1)
-    output = 1 / (1 + exp(-beta * a));
+function output = exponential(a, beta=0.5)
+    output = 1 ./ (1 + exp(-2 * beta * a));
 end
 
-function output = deriv_exp(a, beta=1)
-  ret = (2*b*exp(2*b*pot)) / ((exp(2*b*pot) + 1)**2);
+function output = deriv_exp(pot, b=0.5)
+    a = exp(2 * b * pot);
+    output = (2 * b * a) ./ ((a + 1) .^ 2);
 end
 
 function output = tangenth(a, beta=1)
