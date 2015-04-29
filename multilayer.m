@@ -2,12 +2,12 @@ function output = evalNeuron(input, weights, neurons, g=@exponential)
     layers = length(neurons);
     new_input = [-1, input]';
     for layer = 1:layers
-        output = g(weights{layer} * new_input);
+        output = g(weights{1, layer} * new_input);
         new_input = [-1; output];
     end
 end
 
-function trainNeuron(input_vec, expected, neurons, weights, epochs=1)
+function weights = trainNeuron(input_vec, expected, neurons, weights, epochs=1)
     epoch_size = size(input_vec, 1);
     for epoch = 1:epochs
         for j = 1:epoch_size
@@ -46,11 +46,12 @@ function weights = backward(input, err, weights, fields, neurons, deriv_func, ac
     % y is a column vector
     y = [-1; act_func(fields{layers - 1})]';
 
-    d{layers} = w1 = lrate * gradients * y;
+    d{1, layers} = w1 = lrate * gradients * y;
 
     % hasta acá da todo lo mismo
     for layer = (layers - 1) : -1 : 1
-        suma = (gradients * weights{layer + 1}(:, 2:end));
+        pesos = weights{layer + 1}(:, 2:end);
+        suma = (gradients * pesos);
         deriv = deriv_func(fields{layer})';
         gradients =  suma .* deriv;
         if layer - 1 > 0 % still not in first layer
@@ -60,11 +61,12 @@ function weights = backward(input, err, weights, fields, neurons, deriv_func, ac
             y = [-1; input];
         end
         deltas = lrate * y * gradients;
-        d{layer} = deltas';
+        d{1, layer} = deltas';
     end
+    % hasta acá todo lo mismo
 
     for j = 1:length(neurons)
-        weights{j} = weights{j} + d{j};
+        weights{1, j} += d{1, j};
     end
 end
 

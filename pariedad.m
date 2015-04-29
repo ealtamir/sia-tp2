@@ -1,7 +1,7 @@
 salidas = [0 1 1 0];
 entradas = [0 0 -1; 0 1 -1; 1 0 -1; 1 1 -1];
 %pesos = [rand(1, 2) 1; rand(1, 2) 1; rand(1, 2) 1];
-pesos = 0.5 * ones(3, 3);
+pesos = rand(3, 3);
 
 
 function pot = potencial (entrada, neurona, pesos)
@@ -25,7 +25,7 @@ function ret = gderiv (pot)
 end
 
 n = 0.6;
-for j = 1:1
+for j = 1:2000
   for i = 1:4
     entradaOculta = [0 0 -1];
     potencialCapaOculta = [0 0];
@@ -44,18 +44,24 @@ for j = 1:1
     pesos(1, :) += (deltaCapaOculta(1) .* entradas(i, :)) * n;
     pesos(2, :) += (deltaCapaOculta(2) .* entradas(i, :)) * n;
     pesos(3, :) += (deltaCapaSalida .* entradaOculta) * n;
+    %(deltaCapaOculta(1) .* entradas(i, :)) * n
+    %(deltaCapaOculta(2) .* entradas(i, :)) * n
+    %(deltaCapaSalida .* entradaOculta) * n
   end
 end
 
 pesos
 
-entradaOculta = [0 0 -1];
-potencialCapaOculta = [0 0];
-potencialCapaOculta(1) = potencial(entradas(3, :), 1, pesos);
-potencialCapaOculta(2) = potencial(entradas(3, :), 2, pesos);
-entradaOculta(1) = g(potencialCapaOculta(1));
-entradaOculta(2) = g(potencialCapaOculta(2));
-potencialCapaSalida = potencial(entradaOculta, 3, pesos);
-salida = g(potencialCapaSalida)
+for j = 1:4
+    entradaOculta = [0 0 -1];
+    potencialCapaOculta = [0 0];
+    potencialCapaOculta(1) = potencial(entradas(j, :), 1, pesos);
+    potencialCapaOculta(2) = potencial(entradas(j, :), 2, pesos);
+    entradaOculta(1) = g(potencialCapaOculta(1));
+    entradaOculta(2) = g(potencialCapaOculta(2));
+    potencialCapaSalida = potencial(entradaOculta, 3, pesos);
+    salida = g(potencialCapaSalida)
+end
+
 
 
