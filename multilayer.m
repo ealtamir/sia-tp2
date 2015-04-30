@@ -57,7 +57,7 @@ function weights = backward(err, fields, input, neurons, weights, g, gderiv, lra
         deriv = gderiv(fields{layer})';
         gradients =  suma .* deriv;
         if layer - 1 > 0 % if not in input layer yet
-            y = [-1; g(fields{layer - 1})]';
+            y = [-1; g(fields{layer - 1})];
         else
             y = [-1; input];
         end
