@@ -7,18 +7,21 @@ function approxProblem()
     step = 2 * range / samples;
     input_vec = [-range:step:range](1:samples)';
     expected = 1 ./ (cos(input_vec) + 2);
-    neurons = [5 1];
-    lrate = 0.4;
+    neurons = [5 3 1];
+    lrate = 0.3;
     act_func = @exponential;
     deriv_func = @deriv_exp;
-    epochs = 1000;
-    weights = trainNetwork(input_vec, neurons, expected, act_func,
-        deriv_func, lrate, epochs, @storeWeightsPartialResults);
+    epochs = 3000;
+    err_threshold = 0.001;
+    [weights, epoch] = trainNetwork(input_vec, neurons, expected, act_func,
+        deriv_func, lrate, epochs, err_threshold, @storeWeightsPartialResults);
     results = evalInput(input_vec, weights, neurons, act_func);
     plotAllResults(input_vec, results, partial_results, expected);
+    printf("Completed %d epochs.\n", epoch);
 end
 
-function storeWeightsPartialResults(input_vec, weights, neurons, act_func, iteration)
+function storeWeightsPartialResults(input_vec, weights, neurons,
+        act_func, iteration, epoch)
     global partial_results;
     %printf("updating partial results. Iteration %d\n", iteration);
     result = evalInput(input_vec, weights, neurons, act_func);

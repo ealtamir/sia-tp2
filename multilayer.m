@@ -1,7 +1,9 @@
 global SAMPLES = 4;
+global EPOCH_ERROR = true;
+global VALIDATION_ERROR = false;
 
-function weights = trainNetwork(input_vec, neurons, expected,
-        act_func, deriv_func, lrate, epochs, partialResultsFunc=false)
+function [weights, total_epochs] = trainNetwork(input_vec, neurons, expected, act_func,
+        deriv_func, lrate, epochs, err_threshold, partialResultsFunc=false)
     % Each row represents a neuron
     % each column represents the weights spawning from
     % a neuron or input.
@@ -15,14 +17,16 @@ function weights = trainNetwork(input_vec, neurons, expected,
     iter_epochs = round(epochs / SAMPLES);
     j = 1;
     proceed = true;
+    total_epochs = 0;
     while (j <= SAMPLES && proceed)
         if is_function_handle(partialResultsFunc)
-            partialResultsFunc(input_vec, weights, neurons, act_func, j);
+            partialResultsFunc(input_vec, weights, neurons, act_func, j, total_epochs);
         end
 
-        [proceed, weights] = train(input_vec, expected, neurons,
-            weights, iter_epochs, act_func, deriv_func, lrate);
+        [proceed, weights, epoch] = train(input_vec, expected, neurons, weights,
+            iter_epochs, act_func, deriv_func, lrate, err_threshold);
         j += 1;
+        total_epochs += epoch;
     end
 end
 
@@ -41,19 +45,36 @@ function output = evalNeuron(input, weights, neurons, g)
     end
 end
 
-function [proceed, weights] = train(input_vec, expected, neurons,
-        weights, epochs, act_func, deriv_func, lrate)
+function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights, epochs,
+        act_func, deriv_func, lrate, err_threshold=0.01, val_threshold=0.01)
+    global VALIDATION_ERROR;
+    global EPOCH_ERROR;
     epoch_size = size(input_vec, 1);
     proceed = true;
-    for epoch = 1:epochs
+    epoch = 1;
+    while epoch < epochs && proceed
+        shuffled_indexes = randperm(epoch_size);
         for j = 1:epoch_size
             % input matrixes have the input vector as a row, it must be transformed
             % to a column vector first.
-            input = input_vec(j, :)';
+            input = input_vec(shuffled_indexes(j), :)';
             [output, fields] = forward(input, neurons, weights, act_func);
-            err = expected(j, :) - output;
-            weights = backward(err, fields, input, neurons, weights, act_func, deriv_func, lrate);
+            err(j) = expected(shuffled_indexes(j), :) - output;
+            weights = backward(err(j), fields, input, neurons, weights,
+                act_func, deriv_func, lrate);
         end
+
+        if VALIDATION_ERROR && EPOCH_ERROR
+        elseif VALIDATION_ERROR
+        elseif EPOCH_ERROR
+            avg_err = sum(err .^ 2) / (2 * epoch_size);
+            if avg_err <= err_threshold
+                proceed = false;
+                avg_err
+            end
+        end
+
+        epoch += 1;
     end
 end
 
