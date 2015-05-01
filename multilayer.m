@@ -28,7 +28,7 @@ end
 
 function results = evalInput(input_vec, weights, neurons, g)
     for j = 1:length(input_vec)
-        results(j) = evalNeuron(input_vec(j, :), weights, neurons, g);
+        results(1, j) = evalNeuron(input_vec(j, :), weights, neurons, g);
     end
 end
 
