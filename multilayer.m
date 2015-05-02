@@ -5,7 +5,7 @@ global EPOCH_ERROR = true;
 global VALIDATION_ERROR = true;
 global steps = 0;
 
-function ret = adapt_lrate(lrate, prevErr, currErr, b=0.05, a=0.015)
+function ret = adapt_lrate(lrate, prevErr, currErr, b=0.04, a=0.01)
     global steps;
 
     delta_Error = quadraticMeanError(currErr) - quadraticMeanError(prevErr);
@@ -89,10 +89,9 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
             err(j) = expected(shuffled_indexes(j), :) - output;
             weights = backward(err(j), fields, input, neurons, weights,
                 act_func, deriv_func, lrate);
-            %lrate = adapt_lrate(lrate, prevErr, err);
-            %prevErr = err;
-            prev = j;
         end
+        %lrate = adapt_lrate(lrate, prevErr, err);
+        %prevErr = err;
 
         if VALIDATION_ERROR && EPOCH_ERROR
             [error_test_passes, avg_err] = calcCuadraticMeanError(err, err_threshold);

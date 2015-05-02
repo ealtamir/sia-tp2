@@ -7,10 +7,10 @@ function approxProblem()
     step = 2 * range / samples;
     input_vec = [-range:step:range](1:samples)';
     expected = analyticFunction(input_vec);
-    neurons = [5 1];
+    neurons = [10 8 1];
     lrate = 0.3;
-    act_func = @exponential;
-    deriv_func = @deriv_exp;
+    act_func = @tangenth;
+    deriv_func = @deriv_tan;
     epochs = 1000;
     err_threshold = 0.001;
     val_threshold = 0.001;
