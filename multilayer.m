@@ -1,9 +1,12 @@
+global VALIDATION_ERROR_SAMPLES = 100;
+global VALIDATION_ERROR_STEP = 10;
 global SAMPLES = 4;
 global EPOCH_ERROR = true;
-global VALIDATION_ERROR = false;
+global VALIDATION_ERROR = true;
 
 function [weights, total_epochs] = trainNetwork(input_vec, neurons, expected, act_func,
-        deriv_func, lrate, epochs, err_threshold, partialResultsFunc=false)
+    deriv_func, lrate, epochs, err_threshold, val_threshold, partialResultsFunc=false,
+    gen_test)
     % Each row represents a neuron
     % each column represents the weights spawning from
     % a neuron or input.
@@ -23,8 +26,8 @@ function [weights, total_epochs] = trainNetwork(input_vec, neurons, expected, ac
             partialResultsFunc(input_vec, weights, neurons, act_func, j, total_epochs);
         end
 
-        [proceed, weights, epoch] = train(input_vec, expected, neurons, weights,
-            iter_epochs, act_func, deriv_func, lrate, err_threshold);
+        [proceed, weights, epoch] = train(input_vec, expected, neurons, weights, iter_epochs,
+            act_func, deriv_func, lrate, gen_test, err_threshold, val_threshold);
         j += 1;
         total_epochs += epoch;
     end
@@ -46,9 +49,10 @@ function output = evalNeuron(input, weights, neurons, g)
 end
 
 function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights, epochs,
-        act_func, deriv_func, lrate, err_threshold=0.01, val_threshold=0.01)
+        act_func, deriv_func, lrate, gen_test, err_threshold=0.01, val_threshold=0.01)
     global VALIDATION_ERROR;
     global EPOCH_ERROR;
+    val_err = avg_err = 0;
     epoch_size = size(input_vec, 1);
     proceed = true;
     epoch = 1;
@@ -65,16 +69,44 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
         end
 
         if VALIDATION_ERROR && EPOCH_ERROR
+            [error_test_passes, avg_err] = calcCuadraticMeanError(err, err_threshold);
+            [val_test_passes, val_err] = performValidationTest(gen_test, val_threshold,
+                weights, neuron, act_func);
+            proceed = error_test_passes && val_test_passes;
         elseif VALIDATION_ERROR
+            [proceed, val_err] = performValidationTest(gen_test, val_threshold,
+                weights, neuron, act_func);
         elseif EPOCH_ERROR
-            avg_err = sum(err .^ 2) / (2 * epoch_size);
-            if avg_err <= err_threshold
-                proceed = false;
-                avg_err
-            end
+            [proceed, avg_err] = calcCuadraticMeanError(err, err_threshold);
+        end
+        if proceed == false
+            printf("Avg. epoch error: %.5f - Value error: %.5f.\n", avg_err, val_err);
         end
 
         epoch += 1;
+    end
+end
+function [proceed, val_err] = performValidationTest(gen_test, val_threshold, weights, neuron, g)
+    global VALIDATION_ERROR_SAMPLES;
+    persistent CALLS = 10e6;
+    proceed = true;
+    if CALLS > 0 && mod(CALLS, VALIDATION_ERROR_STEP) == 0
+        samples = genTestSamples(VALIDATION_ERROR_STEP);
+        real_values = gen_test(samples);
+        approx_values = evalInput(samples, weights, neurons, g);
+        err = real_values - approx_values;
+        [proceed, val_err] = calcCuadraticMeanError(err, val_threshold);
+    elseif CALLS < 0
+        CALLS += 10e6;
+    end
+    CALLS -= 1;
+end
+
+function [proceed, avg_err] = calcCuadraticMeanError(err_vec, err_threshold)
+    proceed = true;
+    avg_err = sum(err_vec .^ 2) / (2 * length(err_vec));
+    if avg_err <= err_threshold
+        proceed = false;
     end
 end
 
@@ -130,4 +162,8 @@ end
 
 function output = deriv_tan(a, beta=1)
     output = beta * (1 - tanh(beta * a) .^ 2);
+end
+
+function samples = genTestSamples(amount)
+    samples = (4 * pi) * rand(1, amount) - (2 * pi);
 end
