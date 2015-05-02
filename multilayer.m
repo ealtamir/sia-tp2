@@ -1,6 +1,28 @@
 global SAMPLES = 4;
 global EPOCH_ERROR = true;
 global VALIDATION_ERROR = false;
+global steps = 0;
+
+function ret = adapt_lrate(lrate, prevErr, currErr, b=0.05, a=0.015)
+    global steps;
+
+    delta_Error = quadraticMeanError(currErr) - quadraticMeanError(prevErr);
+
+    ret = lrate;
+    if delta_Error > 0
+        ret = ret -b*lrate;
+        steps = 0;
+    elseif delta_Error < 0
+        steps += 1;
+        if steps >= 3
+            ret = ret + a;
+        end
+    end
+end
+
+function qme = quadraticMeanError(err)
+    qme = sum(err.^2) / length(err);
+end
 
 function [weights, total_epochs] = trainNetwork(input_vec, neurons, expected, act_func,
         deriv_func, lrate, epochs, err_threshold, partialResultsFunc=false)
@@ -52,6 +74,7 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
     epoch_size = size(input_vec, 1);
     proceed = true;
     epoch = 1;
+    prevErr = zeros(1, size(expected, 2));
     while epoch < epochs && proceed
         shuffled_indexes = randperm(epoch_size);
         for j = 1:epoch_size
@@ -62,6 +85,9 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
             err(j) = expected(shuffled_indexes(j), :) - output;
             weights = backward(err(j), fields, input, neurons, weights,
                 act_func, deriv_func, lrate);
+            %lrate = adapt_lrate(lrate, prevErr, err);
+            %prevErr = err;
+            prev = j;
         end
 
         if VALIDATION_ERROR && EPOCH_ERROR
