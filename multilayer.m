@@ -64,7 +64,7 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
     epoch_size = size(input_vec, 1);
     proceed = true;
     epoch = 1;
-    old_err = zeros(epoch_size, 1);
+    old_err = zeros(1, epoch_size);
     while epoch < epochs && proceed
         shuffled_indexes = randperm(epoch_size);
         for j = 1:epoch_size
@@ -89,15 +89,26 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
         end
         if proceed == false
             printf("Avg. epoch error: %.5f - Value error: %.5f.\n", avg_err, val_err);
+            break
         end
 
         epoch += 1;
 
-        if proceed && mod(epoch, 10) == 0
+        if mod(epoch, 10) == 0
             old_err = err;
         end
     end
 end
+
+function [proceed, rate] = calcErrorChangeRate(err, old_err, err_threshold)
+    proceed = true;
+    rate = abs((err - old_err) / 10);
+    if rate < err_threshold
+        proceed = false;
+    end
+end
+
+
 function [proceed, val_err] = performValidationTest(gen_test, val_threshold,
         weights, neurons, g, epoch)
     global VALIDATION_ERROR_STEP;
@@ -115,7 +126,7 @@ end
 
 function [proceed, avg_err] = calcCuadraticMeanError(err_vec, err_threshold)
     proceed = true;
-    avg_err = sum(err_vec .^ 2) / (2 * length(err_vec));
+    avg_err = sum(err_vec .^ 2) / length(err_vec);
     if avg_err <= err_threshold
         proceed = false;
     end
@@ -162,12 +173,12 @@ function weights = backward(err, fields, input, neurons, weights, g, gderiv, lra
 end
 
 function output = exponential(a, beta=0.5)
-    output = 1 ./ (1 + exp(-2 * beta * a));
+    output = 2 * (1 ./ (1 + exp(-2 * beta * a))) - 0.5;
 end
 
 function output = deriv_exp(pot, b=0.5)
     a = exp(2 * b * pot);
-    output = (2 * b * a) ./ ((a + 1) .^ 2);
+    output = 2 * ((2 * b * a) ./ ((a + 1) .^ 2));
 end
 
 function output = tangenth(a, beta=1)

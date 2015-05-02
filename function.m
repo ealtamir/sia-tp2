@@ -14,8 +14,8 @@ function approxProblem()
     lrate = 0.1;
     act_func = @exponential;
     deriv_func = @deriv_exp;
-    epochs = 1000;
-    err_threshold = 0.0001;
+    epochs = 10000;
+    err_threshold = 0.01;
     val_threshold = 0.0001;
 
     [weights, epoch] = trainNetwork(input_vec, neurons, expected, act_func,
