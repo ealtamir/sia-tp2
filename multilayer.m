@@ -4,20 +4,24 @@ clear VALIDATION_ERROR_STEP;
 clear SAMPLES;
 clear EPOCH_ERROR;
 clear VALIDATION_ERROR;
+clear ALPHA;
 
 global VALIDATION_ERROR_SAMPLES = 100;
 global VALIDATION_ERROR_STEP = 10;
 global SAMPLES = 4;
+global ALPHA = 0.5;
+
 global EPOCH_ERROR = true;
 global VALIDATION_ERROR = true;
 
 function [weights, total_epochs] = trainNetwork(input_vec, neurons, expected, act_func,
-    deriv_func, lrate, epochs, err_threshold, val_threshold, partialResultsFunc=false,
-    gen_test)
+        deriv_func, lrate, epochs, err_threshold, val_threshold,
+        partialResultsFunc=false, gen_test)
     global SAMPLES;
     input_size = size(input_vec, 2) + 1;
     for j = 1:length(neurons)
-        weights{j} = rand(neurons(j), input_size);
+        weights{1, j} = rand(neurons(j), input_size);
+        weights{2, j} = zeros(neurons(j), input_size);
         input_size = neurons(j) + 1;
     end
 
@@ -60,6 +64,7 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
     epoch_size = size(input_vec, 1);
     proceed = true;
     epoch = 1;
+    old_err = zeros(epoch_size, 1);
     while epoch < epochs && proceed
         shuffled_indexes = randperm(epoch_size);
         for j = 1:epoch_size
@@ -71,9 +76,8 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
             weights = backward(err(j), fields, input, neurons, weights,
                 act_func, deriv_func, lrate);
         end
-
         if VALIDATION_ERROR && EPOCH_ERROR
-            [error_test_passes, avg_err] = calcCuadraticMeanError(err, err_threshold);
+            [error_test_passes, avg_err] = calcErrorChangeRate(err, old_err, err_threshold);
             [val_test_passes, val_err] = performValidationTest(gen_test, val_threshold,
                 weights, neurons, act_func, epoch);
             proceed = error_test_passes && val_test_passes;
@@ -81,13 +85,17 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
             [proceed, val_err] = performValidationTest(gen_test, val_threshold,
                 weights, neurons, act_func, epoch);
         elseif EPOCH_ERROR
-            [proceed, avg_err] = calcCuadraticMeanError(err, err_threshold);
+            [proceed, avg_err] = calcErrorChangeRate(err, old_err, err_threshold);
         end
         if proceed == false
             printf("Avg. epoch error: %.5f - Value error: %.5f.\n", avg_err, val_err);
         end
 
         epoch += 1;
+
+        if proceed && mod(epoch, 10) == 0
+            old_err = err;
+        end
     end
 end
 function [proceed, val_err] = performValidationTest(gen_test, val_threshold,
@@ -125,6 +133,7 @@ function [output, fields] = forward(input, neurons, weights, g)
 end
 
 function weights = backward(err, fields, input, neurons, weights, g, gderiv, lrate)
+    global ALPHA;
     layers = length(neurons);
 
     out_gradient = err * gderiv(fields{1, layers})';
@@ -133,8 +142,8 @@ function weights = backward(err, fields, input, neurons, weights, g, gderiv, lra
 
     gradients = out_gradient;
     for layer = (layers - 1) : -1 : 1
-        suma = gradients * weights{layer + 1}(:, 2:end); % esto puede dar problemas si hay varias capas ocultas.
-        deriv = gderiv(fields{layer})';
+        suma = gradients * weights{1, layer + 1}(:, 2:end); % esto puede dar problemas si hay varias capas ocultas.
+        deriv = gderiv(fields{1, layer})';
         gradients =  suma .* deriv;
         if layer - 1 > 0 % if not in input layer yet
             y = [-1; g(fields{layer - 1})];
@@ -146,6 +155,8 @@ function weights = backward(err, fields, input, neurons, weights, g, gderiv, lra
     end
 
     for j = 1:length(neurons)
+        delta{1, j} += ALPHA * weights{2, j};
+        weights{2, j} = delta{1, j};
         weights{1, j} += delta{1, j};
     end
 end
