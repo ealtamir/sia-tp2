@@ -6,24 +6,39 @@ function approxProblem()
     samples = 100;
     step = 2 * range / samples;
     input_vec = [-range:step:range](1:samples)';
-    expected = 1 ./ (cos(input_vec) + 2);
-    neurons = [5 3 1];
+    expected = analyticFunction(input_vec);
+    neurons = [5 1];
     lrate = 0.3;
     act_func = @exponential;
     deriv_func = @deriv_exp;
-    epochs = 3000;
+    epochs = 1000;
     err_threshold = 0.001;
+    val_threshold = 0.001;
     [weights, epoch] = trainNetwork(input_vec, neurons, expected, act_func,
-        deriv_func, lrate, epochs, err_threshold, @storeWeightsPartialResults);
+        deriv_func, lrate, epochs, err_threshold, val_threshold,
+        @storeWeightsPartialResults, @analyticFunction);
     results = evalInput(input_vec, weights, neurons, act_func);
     plotAllResults(input_vec, results, partial_results, expected);
-    printf("Completed %d epochs.\n", epoch);
+    gen_power = testGeneralizationPower(weights, neurons, act_func);
+    printf("Completed %d epochs out of %d.\n", epoch, epochs);
+    printf("Generalization error: %.2f percent\n", gen_power);
+end
+
+function gen_power = testGeneralizationPower(weights, neurons, act_func)
+    samples = 10e3;
+    total_error = 1 - 1/3;
+    test_samples = genTestSamples(samples)';
+    %step = 2 * (2 * pi) / samples
+    %test_samples = [-2 * pi : step : 2 * pi](1:samples)';
+    real_vals = analyticFunction(test_samples)';
+    approx_vals = evalInput(test_samples, weights, neurons, act_func);
+    err = abs(real_vals - approx_vals) ./ real_vals;
+    gen_power = (sum(err) / samples) * 100;
 end
 
 function storeWeightsPartialResults(input_vec, weights, neurons,
         act_func, iteration, epoch)
     global partial_results;
-    %printf("updating partial results. Iteration %d\n", iteration);
     result = evalInput(input_vec, weights, neurons, act_func);
     partial_results(iteration, 1:length(result)) = result;
 end
@@ -37,4 +52,8 @@ function plotAllResults(input_vec, results, partial_results, expected)
     end
     subplot(plots, 1, plots);
     plot(input_vec, results, input_vec, expected);
+end
+
+function val = analyticFunction(vector)
+    val = 1 ./ (cos(vector) + 2);
 end
