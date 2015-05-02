@@ -1,5 +1,8 @@
 source "multilayer.m"
 
+clear partial_results;
+global partial_results;
+
 function approxProblem()
     global partial_results;
     range = 2 * pi;
@@ -11,12 +14,14 @@ function approxProblem()
     lrate = 0.3;
     act_func = @exponential;
     deriv_func = @deriv_exp;
-    epochs = 1000;
-    err_threshold = 0.001;
-    val_threshold = 0.001;
+    epochs = 500;
+    err_threshold = 0.0001;
+    val_threshold = 0.0001;
+
     [weights, epoch] = trainNetwork(input_vec, neurons, expected, act_func,
         deriv_func, lrate, epochs, err_threshold, val_threshold,
         @storeWeightsPartialResults, @analyticFunction);
+
     results = evalInput(input_vec, weights, neurons, act_func);
     plotAllResults(input_vec, results, partial_results, expected);
     gen_power = testGeneralizationPower(weights, neurons, act_func);
