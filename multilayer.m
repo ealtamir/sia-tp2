@@ -1,8 +1,8 @@
 global VALIDATION_ERROR_SAMPLES = 100;
 global VALIDATION_ERROR_STEP = 10;
 global SAMPLES = 4;
-global EPOCH_ERROR = true;
-global VALIDATION_ERROR = true;
+global EPOCH_ERROR = false;
+global VALIDATION_ERROR = false;
 
 function [weights, total_epochs] = trainNetwork(input_vec, neurons, expected, act_func,
     deriv_func, lrate, epochs, err_threshold, val_threshold, partialResultsFunc=false,
@@ -71,11 +71,11 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
         if VALIDATION_ERROR && EPOCH_ERROR
             [error_test_passes, avg_err] = calcCuadraticMeanError(err, err_threshold);
             [val_test_passes, val_err] = performValidationTest(gen_test, val_threshold,
-                weights, neuron, act_func);
+                weights, neurons, act_func);
             proceed = error_test_passes && val_test_passes;
         elseif VALIDATION_ERROR
             [proceed, val_err] = performValidationTest(gen_test, val_threshold,
-                weights, neuron, act_func);
+                weights, neurons, act_func);
         elseif EPOCH_ERROR
             [proceed, avg_err] = calcCuadraticMeanError(err, err_threshold);
         end
@@ -86,7 +86,9 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
         epoch += 1;
     end
 end
-function [proceed, val_err] = performValidationTest(gen_test, val_threshold, weights, neuron, g)
+function [proceed, val_err] = performValidationTest(gen_test, val_threshold,
+        weights, neurons, g)
+    global VALIDATION_ERROR_STEP;
     global VALIDATION_ERROR_SAMPLES;
     persistent CALLS = 10e6;
     proceed = true;
