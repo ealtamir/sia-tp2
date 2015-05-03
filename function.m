@@ -10,14 +10,13 @@ function approxProblem()
     step = 2 * range / samples;
     input_vec = [-range:step:range](1:samples)';
     expected = analyticFunction(input_vec);
-    neurons = [10 8 1];
-    lrate = 0.3;
+    neurons = [5 1];
+    lrate = 0.2;
     act_func = @tangenth;
     deriv_func = @deriv_tan;
     epochs = 1000;
     err_threshold = 0.001;
-    val_threshold = 0.001;
-
+    val_threshold = 0.0001;
     [weights, epoch] = trainNetwork(input_vec, neurons, expected, act_func,
         deriv_func, lrate, epochs, err_threshold, val_threshold,
         @storeWeightsPartialResults, @analyticFunction);
@@ -33,8 +32,6 @@ function gen_power = testGeneralizationPower(weights, neurons, act_func)
     samples = 10e3;
     total_error = 1 - 1/3;
     test_samples = genTestSamples(samples)';
-    %step = 2 * (2 * pi) / samples
-    %test_samples = [-2 * pi : step : 2 * pi](1:samples)';
     real_vals = analyticFunction(test_samples)';
     approx_vals = evalInput(test_samples, weights, neurons, act_func);
     err = abs(real_vals - approx_vals) ./ real_vals;

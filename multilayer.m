@@ -4,12 +4,16 @@ clear VALIDATION_ERROR_STEP;
 clear SAMPLES;
 clear EPOCH_ERROR;
 clear VALIDATION_ERROR;
+clear USE_ADAPTATIVE_LRATE;
 
-global VALIDATION_ERROR_SAMPLES = 100;
-global VALIDATION_ERROR_STEP = 10;
-global SAMPLES = 4;
 global EPOCH_ERROR = true;
 global VALIDATION_ERROR = true;
+
+global USE_ADAPTATIVE_LRATE = true;
+
+global SAMPLES = 4;
+global VALIDATION_ERROR_SAMPLES = 100;
+global VALIDATION_ERROR_STEP = 10;
 global steps = 0;
 
 function ret = adapt_lrate(lrate, prevErr, currErr, b=0.04, a=0.01)
@@ -78,11 +82,13 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
         act_func, deriv_func, lrate, gen_test, err_threshold=0.01, val_threshold=0.01)
     global VALIDATION_ERROR;
     global EPOCH_ERROR;
+    global USE_ADAPTATIVE_LRATE;
     val_err = avg_err = 0;
     epoch_size = size(input_vec, 1);
     proceed = true;
     epoch = 1;
     prevErr = zeros(1, size(expected, 2));
+    old_err = zeros(1, epoch_size);
     while epoch < epochs && proceed
         shuffled_indexes = randperm(epoch_size);
         for j = 1:epoch_size
@@ -94,11 +100,14 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
             weights = backward(err(j), fields, input, neurons, weights,
                 act_func, deriv_func, lrate);
         end
-        %lrate = adapt_lrate(lrate, prevErr, err);
-        %prevErr = err;
+
+        if USE_ADAPTATIVE_LRATE
+            lrate = adapt_lrate(lrate, prevErr, err);
+            prevErr = err;
+        end
 
         if VALIDATION_ERROR && EPOCH_ERROR
-            [error_test_passes, avg_err] = calcCuadraticMeanError(err, err_threshold);
+            [error_test_passes, avg_err] = calcErrorRate(err, old_err, err_threshold);
             [val_test_passes, val_err] = performValidationTest(gen_test, val_threshold,
                 weights, neurons, act_func, epoch);
             proceed = error_test_passes && val_test_passes;
@@ -106,15 +115,32 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
             [proceed, val_err] = performValidationTest(gen_test, val_threshold,
                 weights, neurons, act_func, epoch);
         elseif EPOCH_ERROR
-            [proceed, avg_err] = calcCuadraticMeanError(err, err_threshold);
+            [proceed, avg_err] = calcErrorRate(err, old_err, err_threshold);
         end
         if proceed == false
             printf("Avg. epoch error: %.5f - Value error: %.5f.\n", avg_err, val_err);
+            break;
+        end
+
+        if mod(epoch, 10) == 0
+            old_err = err;
         end
 
         epoch += 1;
     end
 end
+
+function [proceed, avg_err] = calcErrorRate(err, old_err, err_threshold)
+    proceed = true;
+    rate = norm(err - old_err) / 10;
+    avg_err = 0;
+    if rate < err_threshold
+        proceed = false;
+        avg_err = rate;
+    end
+end
+
+
 function [proceed, val_err] = performValidationTest(gen_test, val_threshold,
         weights, neurons, g, epoch)
     global VALIDATION_ERROR_STEP;
@@ -132,9 +158,11 @@ end
 
 function [proceed, avg_err] = calcCuadraticMeanError(err_vec, err_threshold)
     proceed = true;
-    avg_err = sum(err_vec .^ 2) / (2 * length(err_vec));
-    if avg_err <= err_threshold
+    avg_err = 0;
+    rate = sum(err_vec .^ 2) / (2 * length(err_vec));
+    if rate <= err_threshold
         proceed = false;
+        avg_err = rate;
     end
 end
 
@@ -176,12 +204,12 @@ function weights = backward(err, fields, input, neurons, weights, g, gderiv, lra
 end
 
 function output = exponential(a, beta=0.5)
-    output = 1 ./ (1 + exp(-2 * beta * a));
+    output = 2 * (1 ./ (1 + exp(-2 * beta * a)));
 end
 
 function output = deriv_exp(pot, b=0.5)
     a = exp(2 * b * pot);
-    output = (2 * b * a) ./ ((a + 1) .^ 2);
+    output = ((2 * b * a) ./ ((a + 1) .^ 2));
 end
 
 function output = tangenth(a, beta=1)
