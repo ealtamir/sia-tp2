@@ -20,7 +20,7 @@ function approxProblem()
 
     use_momentum = false;
     alfa = 0;
-    use_adapt_lrate = true;
+    use_adapt_lrate = false;
     %a = 0.01;
     %b = 0.05;
     for a = 0.1:0.05:0.3
