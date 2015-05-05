@@ -30,7 +30,6 @@ end
 
 function gen_power = testGeneralizationPower(weights, neurons, act_func)
     samples = 10e3;
-    total_error = 1 - 1/3;
     test_samples = genTestSamples(samples)';
     real_vals = analyticFunction(test_samples)';
     approx_vals = evalInput(test_samples, weights, neurons, act_func);
