@@ -6,16 +6,16 @@ global partial_results;
 function approxProblem()
     global partial_results;
     range = 2 * pi;
-    samples = 200;
+    samples = 100;
     step = 2 * range / samples;
     input_vec = [-range:step:range](1:samples)';
     expected = analyticFunction(input_vec);
-    neurons = [5 1];
+    neurons = [10 5 1];
     lrate = 0.3;
     act_func = @tangenth;
     deriv_func = @deriv_tan;
-    epochs = 2000;
-    err_threshold = 0.001;
+    epochs = 1000;
+    err_threshold = 0.04;
     val_threshold = 0.0001;
 
     use_momentum = false;
@@ -23,14 +23,14 @@ function approxProblem()
     use_adapt_lrate = true;
     %a = 0.01;
     %b = 0.05;
-    for a = 0.01:0.05:1
-        for b = 0.01:0.05:1
+    for a = 0.1:0.05:0.3
+        for b = 0.05:0.05:0.2
             [weights, epoch] = trainNetwork(input_vec, neurons, expected, act_func,
                 deriv_func, lrate, epochs, err_threshold, val_threshold,
-                @storeWeightsPartialResults, @analyticFunction, use_adapt_lrate);
+                @storeWeightsPartialResults, @analyticFunction, use_adapt_lrate, a, b);
 
             results = evalInput(input_vec, weights, neurons, act_func);
-            filename = buildFilename(samples, neurons, "tanh", use_momentum, alfa, use_adapt_lrate, b, a)
+            filename = buildFilename(samples, neurons, "tanh", use_momentum, alfa, use_adapt_lrate, a, b)
             plotAllResults(input_vec, results, partial_results, expected, filename);
             gen_power = testGeneralizationPower(weights, neurons, act_func);
             printf("Completed %d epochs out of %d.\n", epoch, epochs);
@@ -57,7 +57,7 @@ function storeWeightsPartialResults(input_vec, weights, neurons,
     partial_results(iteration, 1:length(result)) = result;
 end
 
-function filename = buildFilename(samples, arch, act_fun, use_momentum=0, alfa=0, use_adapt_lrate=0, b=0, a=0)
+function filename = buildFilename(samples, arch, act_fun, use_momentum=0, alfa=0, use_adapt_lrate=0, a=0, b=0)
     filename = strcat(act_fun, "_");
     if use_adapt_lrate
         filename = strcat(filename, "adapt_b", mat2str(b), "a", mat2str(a));

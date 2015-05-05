@@ -8,13 +8,13 @@ clear VALIDATION_ERROR;
 global EPOCH_ERROR = true;
 global VALIDATION_ERROR = true;
 
-global USE_ADAPTATIVE_LRATE;
+global USE_ADAPTIVE_LRATE;
 global SAMPLES = 4;
 global VALIDATION_ERROR_SAMPLES = 100;
 global VALIDATION_ERROR_STEP = 10;
 global steps = 0;
 
-function [undo, ret] = adapt_lrate(lrate, prevErr, currErr, b=0.05, a=0.01)
+function [undo, ret] = adapt_lrate(lrate, prevErr, currErr, a=0, b=0)
     global steps;
 
     delta_Error = quadraticMeanError(currErr) - quadraticMeanError(prevErr);
@@ -22,7 +22,7 @@ function [undo, ret] = adapt_lrate(lrate, prevErr, currErr, b=0.05, a=0.01)
     ret = lrate;
     undo = 0;
     if delta_Error > 0
-        ret = ret -b*lrate;
+        ret = ret -b*ret;
         steps = 0;
         undo = 1;
     elseif delta_Error < 0
@@ -39,10 +39,10 @@ end
 
 function [weights, total_epochs] = trainNetwork(input_vec, neurons, expected, act_func,
     deriv_func, lrate, epochs, err_threshold, val_threshold, partialResultsFunc=false,
-    gen_test, use_adapt_lrate)
+    gen_test, use_adapt_lrate, a, b)
     global SAMPLES;
-    global USE_ADAPTATIVE_LRATE;
-    USE_ADAPTATIVE_LRATE = use_adapt_lrate;
+    global USE_ADAPTIVE_LRATE;
+    USE_ADAPTIVE_LRATE = use_adapt_lrate;
     input_size = size(input_vec, 2) + 1;
     for j = 1:length(neurons)
         weights{j} = rand(neurons(j), input_size);
@@ -59,7 +59,7 @@ function [weights, total_epochs] = trainNetwork(input_vec, neurons, expected, ac
         end
 
         [proceed, weights, epoch] = train(input_vec, expected, neurons, weights, iter_epochs,
-            act_func, deriv_func, lrate, gen_test, err_threshold, val_threshold);
+            act_func, deriv_func, lrate, gen_test, err_threshold, val_threshold, a, b);
         j += 1;
         total_epochs += epoch;
     end
@@ -81,10 +81,10 @@ function output = evalNeuron(input, weights, neurons, g)
 end
 
 function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights, epochs,
-        act_func, deriv_func, lrate, gen_test, err_threshold=0.01, val_threshold=0.01, a=0.1, b=0.05)
+        act_func, deriv_func, lrate, gen_test, err_threshold=0.01, val_threshold=0.01, a=0, b=0)
     global VALIDATION_ERROR;
     global EPOCH_ERROR;
-    global USE_ADAPTATIVE_LRATE;
+    global USE_ADAPTIVE_LRATE;
     val_err = avg_err = 0;
     epoch_size = size(input_vec, 1);
     proceed = true;
@@ -104,13 +104,13 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
                 act_func, deriv_func, lrate);
         end
 
-        if USE_ADAPTATIVE_LRATE
+        if USE_ADAPTIVE_LRATE
             [undo, lrate] = adapt_lrate(lrate, prevErr, err, a, b);
-            if undo
-                weights = prevWeights;
-            else
-                prevErr = err;
-            end
+            %if undo
+                %weights = prevWeights;
+            %else
+                %prevErr = err;
+            %end
         end
 
         if VALIDATION_ERROR && EPOCH_ERROR
