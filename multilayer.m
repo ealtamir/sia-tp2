@@ -20,9 +20,7 @@ global VALIDATION_ERROR_STEP = 10;
 global steps = 0;
 
 function [undo, ret] = adapt_lrate(lrate, currErr, prevErr, a=0, b=0)
-    global steps
-    steps
-    fflush(stdout)
+    global steps;
 
     delta_Error = quadraticMeanError(currErr) - quadraticMeanError(prevErr);
 
@@ -36,6 +34,7 @@ function [undo, ret] = adapt_lrate(lrate, currErr, prevErr, a=0, b=0)
         steps += 1;
         if steps >= 3
             ret = ret + a;
+            step = 0;
         end
     end
 end
@@ -94,6 +93,8 @@ end
 
 function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights, epochs,
         act_func, deriv_func, lrate, gen_test, err_threshold=0.01, val_threshold=0.01, a=0, b=0)
+    global ALPHA;
+    global ALPHACONST;
     global VALIDATION_ERROR;
     global EPOCH_ERROR;
     global USE_ADAPTIVE_LRATE;
@@ -122,16 +123,14 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
 
         if USE_ADAPTIVE_LRATE
             [undo, lrate] = adapt_lrate(lrate, err, prevErr, a, b);
-            lrate
             if undo
                 weights = prevWeights;
                 ALPHA = 0;
             else
-                prevErr = err;
+                ALPHA = ALPHACONST;
             end
-        else
-            prevErr = err;
         end
+        prevErr = err;
 
 
         if VALIDATION_ERROR && EPOCH_ERROR
