@@ -4,7 +4,6 @@ clear VALIDATION_ERROR_STEP;
 clear SAMPLES;
 clear EPOCH_ERROR;
 clear VALIDATION_ERROR;
-clear USE_ADAPTATIVE_LRATE;
 
 clear ALPHA;
 
@@ -16,22 +15,23 @@ global ALPHA = 0.5;
 global EPOCH_ERROR = true;
 global VALIDATION_ERROR = true;
 
-global USE_ADAPTATIVE_LRATE = true;
-
+global USE_ADAPTATIVE_LRATE;
 global SAMPLES = 4;
 global VALIDATION_ERROR_SAMPLES = 100;
 global VALIDATION_ERROR_STEP = 10;
 global steps = 0;
 
-function ret = adapt_lrate(lrate, prevErr, currErr, b=0.04, a=0.01)
+function [undo, ret] = adapt_lrate(lrate, prevErr, currErr, b=0.05, a=0.01)
     global steps;
 
     delta_Error = quadraticMeanError(currErr) - quadraticMeanError(prevErr);
 
     ret = lrate;
+    undo = 0;
     if delta_Error > 0
         ret = ret -b*lrate;
         steps = 0;
+        undo = 1;
     elseif delta_Error < 0
         steps += 1;
         if steps >= 3
@@ -45,9 +45,12 @@ function qme = quadraticMeanError(err)
 end
 
 function [weights, total_epochs] = trainNetwork(input_vec, neurons, expected, act_func,
-        deriv_func, lrate, epochs, err_threshold, val_threshold,
-        partialResultsFunc=false, gen_test)
+    deriv_func, lrate, epochs, err_threshold, val_threshold, partialResultsFunc=false,
+    gen_test, use_adapt_lrate)
+
     global SAMPLES;
+    global USE_ADAPTATIVE_LRATE;
+    USE_ADAPTATIVE_LRATE = use_adapt_lrate;
     input_size = size(input_vec, 2) + 1;
     for j = 1:length(neurons)
         weights{1, j} = rand(neurons(j), input_size);
@@ -87,7 +90,7 @@ function output = evalNeuron(input, weights, neurons, g)
 end
 
 function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights, epochs,
-        act_func, deriv_func, lrate, gen_test, err_threshold=0.01, val_threshold=0.01)
+        act_func, deriv_func, lrate, gen_test, err_threshold=0.01, val_threshold=0.01, a=0.1, b=0.05)
     global VALIDATION_ERROR;
     global EPOCH_ERROR;
     global USE_ADAPTATIVE_LRATE;
@@ -99,6 +102,7 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
     old_err = zeros(1, epoch_size);
     while epoch < epochs && proceed
         shuffled_indexes = randperm(epoch_size);
+        prevWeights = weights;
         for j = 1:epoch_size
             % input matrixes have the input vector as a row, it must be transformed
             % to a column vector first.
@@ -110,8 +114,12 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
         end
 
         if USE_ADAPTATIVE_LRATE
-            lrate = adapt_lrate(lrate, prevErr, err);
-            prevErr = err;
+            [undo, lrate] = adapt_lrate(lrate, prevErr, err, a, b);
+            if undo
+                weights = prevWeights;
+            else
+                prevErr = err;
+            end
         end
 
         if VALIDATION_ERROR && EPOCH_ERROR
@@ -164,14 +172,15 @@ function [proceed, val_err] = performValidationTest(gen_test, val_threshold,
         real_values = gen_test(samples);
         approx_values = evalInput(samples', weights, neurons, g);
         err = real_values - approx_values;
-        [proceed, val_err] = calcCuadraticMeanError(err, val_threshold);
+        [proceed, val_err] = calcQuadraticMeanError(err, val_threshold);
     end
 end
 
-function [proceed, avg_err] = calcCuadraticMeanError(err_vec, err_threshold)
+function [proceed, avg_err] = calcQuadraticMeanError(err_vec, err_threshold)
     proceed = true;
-    avg_err = sum(err_vec .^ 2) / length(err_vec);
-    if avg_err <= err_threshold
+    avg_err = 0;
+    rate = quadraticMeanError(err_vec);%sum(err_vec .^ 2) / (2 * length(err_vec));
+    if rate <= err_threshold
         proceed = false;
         avg_err = rate;
     end
