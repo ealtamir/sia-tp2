@@ -1,16 +1,14 @@
-
 clear VALIDATION_ERROR_SAMPLES;
 clear VALIDATION_ERROR_STEP;
 clear SAMPLES;
 clear EPOCH_ERROR;
 clear VALIDATION_ERROR;
 
-clear ALPHA;
-
 global VALIDATION_ERROR_SAMPLES = 100;
 global VALIDATION_ERROR_STEP = 10;
 global SAMPLES = 4;
-global ALPHA = 0.5;
+global ALPHACONST;
+global ALPHA;
 
 global EPOCH_ERROR = true;
 global VALIDATION_ERROR = true;
@@ -21,8 +19,10 @@ global VALIDATION_ERROR_SAMPLES = 100;
 global VALIDATION_ERROR_STEP = 10;
 global steps = 0;
 
-function [undo, ret] = adapt_lrate(lrate, prevErr, currErr, a=0, b=0)
-    global steps;
+function [undo, ret] = adapt_lrate(lrate, currErr, prevErr, a=0, b=0)
+    global steps
+    steps
+    fflush(stdout)
 
     delta_Error = quadraticMeanError(currErr) - quadraticMeanError(prevErr);
 
@@ -46,8 +46,12 @@ end
 
 function [weights, total_epochs] = trainNetwork(input_vec, neurons, expected, act_func,
     deriv_func, lrate, epochs, err_threshold, val_threshold, partialResultsFunc=false,
-    gen_test, use_adapt_lrate, a, b)
+    gen_test, use_adapt_lrate, a, b, alpha)
     global SAMPLES;
+    global ALPHA;
+    ALPHA = alpha;
+    global ALPHACONST;
+    ALPHACONST = alpha;
     global USE_ADAPTIVE_LRATE;
     USE_ADAPTIVE_LRATE = use_adapt_lrate;
     input_size = size(input_vec, 2) + 1;
@@ -97,7 +101,7 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
     epoch_size = size(input_vec, 1);
     proceed = true;
     epoch = 1;
-    prevErr = zeros(1, size(expected, 2));
+    %prevErr = zeros(1, epoch_size);
     old_err = zeros(1, epoch_size);
     while epoch < epochs && proceed
         shuffled_indexes = randperm(epoch_size);
@@ -112,14 +116,23 @@ function [proceed, weights, epoch] = train(input_vec, expected, neurons, weights
                 act_func, deriv_func, lrate);
         end
 
-        if USE_ADAPTIVE_LRATE
-            [undo, lrate] = adapt_lrate(lrate, prevErr, err, a, b);
-            %if undo
-                %weights = prevWeights;
-            %else
-                %prevErr = err;
-            %end
+        if epoch == 1
+            prevErr = err;
         end
+
+        if USE_ADAPTIVE_LRATE
+            [undo, lrate] = adapt_lrate(lrate, err, prevErr, a, b);
+            lrate
+            if undo
+                weights = prevWeights;
+                ALPHA = 0;
+            else
+                prevErr = err;
+            end
+        else
+            prevErr = err;
+        end
+
 
         if VALIDATION_ERROR && EPOCH_ERROR
             [error_test_passes, avg_err] = calcErrorChangeRate(err, old_err, err_threshold);

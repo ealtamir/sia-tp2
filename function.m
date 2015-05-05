@@ -15,29 +15,28 @@ function approxProblem()
     act_func = @tangenth;
     deriv_func = @deriv_tan;
     epochs = 1000;
-    err_threshold = 0.04;
+    err_threshold = 0.03;
     val_threshold = 0.0001;
 
-    use_momentum = false;
-    alfa = 0;
-    use_adapt_lrate = false;
-    %a = 0.01;
-    %b = 0.05;
-    for a = 0.1:0.05:0.3
-        for b = 0.05:0.05:0.2
+    alpha = 0;
+    use_adapt_lrate = true;
+    a = 0.05;
+    b = 0.4;
+    %for a = 0.04:0.01:0.1;
+    for k = 1:1:3;
             [weights, epoch] = trainNetwork(input_vec, neurons, expected, act_func,
                 deriv_func, lrate, epochs, err_threshold, val_threshold,
-                @storeWeightsPartialResults, @analyticFunction, use_adapt_lrate, a, b);
+                @storeWeightsPartialResults, @analyticFunction, use_adapt_lrate, a, b, alpha);
 
             results = evalInput(input_vec, weights, neurons, act_func);
-            filename = buildFilename(samples, neurons, "tanh", use_momentum, alfa, use_adapt_lrate, a, b)
+            filename = buildFilename(samples, neurons, "tanh", (alpha != 0), alpha, use_adapt_lrate, a, b)
             plotAllResults(input_vec, results, partial_results, expected, filename);
             gen_power = testGeneralizationPower(weights, neurons, act_func);
             printf("Completed %d epochs out of %d.\n", epoch, epochs);
             printf("Generalization error: %.2f percent\n", gen_power);
             fflush(stdout);
         end
-    end
+    %end
 end
 
 function gen_power = testGeneralizationPower(weights, neurons, act_func)
@@ -63,7 +62,7 @@ function filename = buildFilename(samples, arch, act_fun, use_momentum=0, alfa=0
         filename = strcat(filename, "adapt_b", mat2str(b), "a", mat2str(a));
     end
     if use_momentum
-        filename = strcat(filename, "momalfa", mat2str(alfa));
+        filename = strcat(filename, "momentum", mat2str(alfa));
     end
     filename = strcat(filename, "sample", mat2str(samples), "arch", mat2str(arch), ".png");
 end
