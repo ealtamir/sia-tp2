@@ -11,16 +11,15 @@ function approxProblem()
     input_vec = [-range:step:range](1:samples)';
     expected = analyticFunction(input_vec);
     neurons = [10 5 1];
-    %neurons = [5 3 1];
     lrate = 0.3;
-    act_func = @exponential;
-    deriv_func = @deriv_exp;
-    epochs = 2000;
+    act_func = @tangenth;
+    deriv_func = @deriv_tan;
+    epochs = 5000;
     err_threshold = 0.03;
     val_threshold = 0.0001;
 
     alpha = 0;
-    use_adapt_lrate = true;
+    use_adapt_lrate = false;
     a = 0.05;
     b = 0.15;
     [weights, epoch] = trainNetwork(input_vec, neurons, expected, act_func,
@@ -28,7 +27,7 @@ function approxProblem()
         @storeWeightsPartialResults, @analyticFunction, use_adapt_lrate, a, b, alpha);
 
     results = evalInput(input_vec, weights, neurons, act_func);
-    filename = buildFilename(samples, neurons, "exp", (alpha != 0), alpha, use_adapt_lrate, a, b)
+    filename = buildFilename(samples, neurons, "tanh", (alpha != 0), alpha, use_adapt_lrate, a, b)
     plotAllResults(input_vec, results, partial_results, expected, filename);
     gen_power = testGeneralizationPower(weights, neurons, act_func);
     printf("Completed %d epochs out of %d.\n", epoch, epochs);
